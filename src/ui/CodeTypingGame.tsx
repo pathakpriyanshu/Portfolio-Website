@@ -8,23 +8,7 @@ import {
 } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 
-const SNIPPET = `import torch
-import torch.nn as nn
-
-model = nn.Sequential(
-    nn.Linear(784, 128),
-    nn.ReLU(),
-    nn.Linear(128, 10),
-)
-optimizer = torch.optim.Adam(model.parameters())`;
-
 const DURATION = 15; // seconds
-
-const KEYWORDS = new Set([
-  'import', 'from', 'as', 'class', 'def', 'return', 'self', 'for', 'in', 'if',
-  'else', 'elif', 'while', 'with', 'lambda', 'None', 'True', 'False', 'and',
-  'or', 'not', 'super',
-]);
 
 type Tok = 'base' | 'keyword' | 'string' | 'number' | 'func' | 'comment' | 'ident';
 
@@ -38,12 +22,127 @@ const COLOR: Record<Tok, string> = {
   ident: '#aab4c2',
 };
 
-function classify(src: string): Tok[] {
+type Language = {
+  id: string;
+  filename: string;
+  label: string;
+  lineComment: string;
+  keywords: Set<string>;
+  snippet: string;
+};
+
+// TODO(Priyanshu): swap these snippets for whatever you'd rather show off.
+const LANGUAGES: Language[] = [
+  {
+    id: 'python',
+    filename: 'train.py',
+    label: 'PYTHON',
+    lineComment: '#',
+    keywords: new Set([
+      'import', 'from', 'as', 'class', 'def', 'return', 'self', 'for', 'in',
+      'if', 'else', 'elif', 'while', 'with', 'lambda', 'None', 'True',
+      'False', 'and', 'or', 'not', 'super',
+    ]),
+    snippet: `import torch
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(784, 128),
+    nn.ReLU(),
+    nn.Linear(128, 10),
+)
+optimizer = torch.optim.Adam(model.parameters())`,
+  },
+  {
+    id: 'go',
+    filename: 'train.go',
+    label: 'GO',
+    lineComment: '//',
+    keywords: new Set([
+      'package', 'import', 'func', 'return', 'for', 'if', 'else', 'range',
+      'var', 'const', 'type', 'struct', 'interface', 'defer',
+    ]),
+    snippet: `package main
+
+import "fmt"
+
+func trainModel(epochs int) string {
+    for i := 0; i < epochs; i++ {
+        fmt.Println("epoch", i)
+    }
+    return "done"
+}`,
+  },
+  {
+    id: 'cpp',
+    filename: 'train.cpp',
+    label: 'C++',
+    lineComment: '//',
+    keywords: new Set([
+      'include', 'class', 'public', 'private', 'protected', 'return',
+      'float', 'int', 'double', 'void', 'const', 'struct', 'namespace',
+      'using', 'new', 'this',
+    ]),
+    snippet: `#include <vector>
+#include <iostream>
+
+class Model {
+public:
+    std::vector<float> weights;
+
+    float forward(float x) {
+        return x * weights[0];
+    }
+};`,
+  },
+  {
+    id: 'java',
+    filename: 'Model.java',
+    label: 'JAVA',
+    lineComment: '//',
+    keywords: new Set([
+      'import', 'public', 'class', 'private', 'protected', 'static', 'void',
+      'double', 'int', 'float', 'return', 'new', 'this', 'extends',
+    ]),
+    snippet: `import java.util.List;
+
+public class Model {
+    private List<Double> weights;
+
+    public double forward(double x) {
+        return x * weights.get(0);
+    }
+}`,
+  },
+  {
+    id: 'rust',
+    filename: 'model.rs',
+    label: 'RUST',
+    lineComment: '//',
+    keywords: new Set([
+      'use', 'struct', 'impl', 'fn', 'self', 'let', 'mut', 'pub', 'return',
+      'match', 'if', 'else', 'for', 'in',
+    ]),
+    snippet: `use std::vec::Vec;
+
+struct Model {
+    weights: Vec<f32>,
+}
+
+impl Model {
+    fn forward(&self, x: f32) -> f32 {
+        x * self.weights[0]
+    }
+}`,
+  },
+];
+
+function classify(src: string, keywords: Set<string>, lineComment: string): Tok[] {
   const colors: Tok[] = new Array(src.length).fill('base');
   let i = 0;
   while (i < src.length) {
     const c = src[i];
-    if (c === '#') {
+    if (lineComment && src.startsWith(lineComment, i)) {
       let j = i;
       while (j < src.length && src[j] !== '\n') colors[j++] = 'comment';
       i = j;
@@ -68,7 +167,7 @@ function classify(src: string): Tok[] {
       let j = i;
       while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++;
       const word = src.slice(i, j);
-      const t: Tok = KEYWORDS.has(word)
+      const t: Tok = keywords.has(word)
         ? 'keyword'
         : src[j] === '('
           ? 'func'
@@ -99,21 +198,19 @@ function nextTypeable(src: string, pos: number): number {
   return pos;
 }
 
-const BASE = classify(SNIPPET);
-const START = nextTypeable(SNIPPET, 0);
-
 type LineData = { chars: { ch: string; gi: number }[] };
-const LINES: LineData[] = (() => {
+
+function buildLines(src: string): LineData[] {
   const out: LineData[] = [];
   let gi = 0;
-  SNIPPET.split('\n').forEach((text, li, arr) => {
+  src.split('\n').forEach((text, li, arr) => {
     const chars: { ch: string; gi: number }[] = [];
     for (const ch of text) chars.push({ ch, gi: gi++ });
     if (li < arr.length - 1) gi++; // account for the '\n'
     out.push({ chars });
   });
   return out;
-})();
+}
 
 type CodeTypingGameProps = {
   interactive?: boolean;
@@ -126,7 +223,18 @@ export default function CodeTypingGame({
   className = '',
   style,
 }: CodeTypingGameProps) {
-  const [pos, setPos] = useState(START);
+  const [langIndex, setLangIndex] = useState(0);
+  const language = LANGUAGES[langIndex];
+  const snippet = language.snippet;
+
+  const base = useMemo(
+    () => classify(snippet, language.keywords, language.lineComment),
+    [snippet, language]
+  );
+  const startPos = useMemo(() => nextTypeable(snippet, 0), [snippet]);
+  const lines = useMemo(() => buildLines(snippet), [snippet]);
+
+  const [pos, setPos] = useState(startPos);
   const [correctness, setCorrectness] = useState<Record<number, boolean>>({});
   const [, setVisited] = useState<number[]>([]);
   const [typed, setTyped] = useState(0);
@@ -139,8 +247,10 @@ export default function CodeTypingGame({
   const startRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const reset = useCallback(() => {
-    setPos(START);
+  // Re-initialize typing state whenever the active language (and thus the
+  // snippet) changes — including the very first mount.
+  useEffect(() => {
+    setPos(startPos);
     setCorrectness({});
     setVisited([]);
     setTyped(0);
@@ -150,6 +260,11 @@ export default function CodeTypingGame({
     setFinalTime(DURATION);
     setTimeLeft(DURATION);
     startRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snippet]);
+
+  const nextLanguage = useCallback(() => {
+    setLangIndex((i) => (i + 1) % LANGUAGES.length);
   }, []);
 
   // Interactive countdown timer.
@@ -170,23 +285,23 @@ export default function CodeTypingGame({
   // Demo mode: auto-type the snippet on a loop.
   useEffect(() => {
     if (interactive) return;
-    let p = START;
-    setPos(START);
+    let p = startPos;
+    setPos(startPos);
     const id = setInterval(() => {
-      p = nextTypeable(SNIPPET, p + 1);
-      if (p >= SNIPPET.length) {
-        setPos(SNIPPET.length);
-        p = SNIPPET.length;
+      p = nextTypeable(snippet, p + 1);
+      if (p >= snippet.length) {
+        setPos(snippet.length);
+        p = snippet.length;
         setTimeout(() => {
-          p = START;
-          setPos(START);
+          p = startPos;
+          setPos(startPos);
         }, 1600);
       } else {
         setPos(p);
       }
     }, 55);
     return () => clearInterval(id);
-  }, [interactive]);
+  }, [interactive, snippet, startPos]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -223,22 +338,22 @@ export default function CodeTypingGame({
         setTimeLeft(DURATION);
       }
 
-      const expected = SNIPPET[pos];
+      const expected = snippet[pos];
       const isCorrect = e.key === expected;
       setCorrectness((c) => ({ ...c, [pos]: isCorrect }));
       setVisited((v) => [...v, pos]);
       setTyped((n) => n + 1);
       if (isCorrect) setCorrect((n) => n + 1);
 
-      const np = nextTypeable(SNIPPET, pos + 1);
+      const np = nextTypeable(snippet, pos + 1);
       setPos(np);
-      if (np >= SNIPPET.length) {
+      if (np >= snippet.length) {
         const elapsed = (Date.now() - (startRef.current ?? Date.now())) / 1000;
         setFinalTime(Math.max(0.5, Math.min(DURATION, elapsed)));
         setFinished(true);
       }
     },
-    [interactive, finished, started, pos]
+    [interactive, finished, started, pos, snippet]
   );
 
   const wpm = useMemo(() => {
@@ -271,7 +386,7 @@ export default function CodeTypingGame({
         <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
         <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
         <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-        <span className="ml-3 font-mono text-xs text-[#8b94a3]">train.py</span>
+        <span className="ml-3 font-mono text-xs text-[#8b94a3]">{language.filename}</span>
         <span className="ml-auto flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-[#28c840]" />
           <span
@@ -280,7 +395,7 @@ export default function CodeTypingGame({
           >
             {interactive
               ? `${Math.ceil(finished ? 0 : timeLeft)}s`
-              : 'PYTHON'}
+              : language.label}
           </span>
         </span>
       </div>
@@ -294,7 +409,7 @@ export default function CodeTypingGame({
           className="font-mono leading-relaxed"
           style={{ fontSize: 'clamp(12px, 1.05vw, 14.5px)' }}
         >
-          {LINES.map((line, li) => (
+          {lines.map((line, li) => (
             <div key={li} className="flex whitespace-pre">
               <span className="mr-4 select-none text-right text-[#3f4756]" style={{ minWidth: '1.5em' }}>
                 {li + 1}
@@ -305,7 +420,7 @@ export default function CodeTypingGame({
                 ) : (
                   line.chars.map(({ ch, gi }) => {
                     const isCurrent = gi === pos && showCaret;
-                    let color = COLOR[BASE[gi]];
+                    let color = COLOR[base[gi]];
                     let opacity = 1;
                     let background = 'transparent';
 
@@ -373,7 +488,9 @@ export default function CodeTypingGame({
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center"
           style={{ background: 'rgba(8,9,13,0.72)', backdropFilter: 'blur(2px)' }}
         >
-          <span className="font-mono text-sm text-[#7cc7ff]">▶ 15-second code sprint</span>
+          <span className="font-mono text-sm text-[#7cc7ff]">
+            ▶ 15-second {language.label} sprint
+          </span>
           <span className="font-mono text-xs text-[#8b94a3]">
             Click here, then start typing the code
           </span>
@@ -402,12 +519,12 @@ export default function CodeTypingGame({
           <button
             type="button"
             onClick={() => {
-              reset();
+              nextLanguage();
               requestAnimationFrame(() => containerRef.current?.focus());
             }}
             className="mt-1 rounded-full border border-[#7cc7ff]/40 px-6 py-2 font-mono text-xs uppercase tracking-widest text-[#D7E2EA] transition-colors duration-200 hover:bg-[#7cc7ff]/10"
           >
-            Try again
+            Try again — {LANGUAGES[(langIndex + 1) % LANGUAGES.length].label}
           </button>
         </div>
       )}
