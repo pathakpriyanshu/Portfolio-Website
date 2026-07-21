@@ -23,3 +23,11 @@ body,
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+.skill-gradient {
+  background: linear-gradient(90deg, #c46be8 0%, #8b5cf6 48%, #f0793b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}

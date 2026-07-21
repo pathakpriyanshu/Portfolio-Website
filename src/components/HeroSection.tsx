@@ -1,10 +1,9 @@
+import CodeTypingGame from '../ui/CodeTypingGame';
 import ContactButton from '../ui/ContactButton';
 import FadeIn from '../ui/FadeIn';
-import Magnet from '../ui/Magnet';
+import SkillShowcase from '../ui/SkillShowcase';
 
 const NAV_LINKS = ['About', 'Skills', 'Projects', 'Contact'];
-
-const PORTRAIT = '/image2.png';
 
 export default function HeroSection() {
   return (
@@ -12,11 +11,36 @@ export default function HeroSection() {
       className="relative flex h-screen flex-col"
       style={{ background: '#0C0C0C', overflowX: 'clip' }}
     >
+      {/* Background: dot grid, faded toward the edges */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(rgba(215,226,234,0.07) 1px, transparent 1px)',
+          backgroundSize: '34px 34px',
+          maskImage:
+            'radial-gradient(ellipse at center, black 35%, transparent 82%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse at center, black 35%, transparent 82%)',
+        }}
+      />
+
+      {/* Background: colored glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-12%] left-1/2 z-0 h-[560px] w-[560px] -translate-x-1/2 md:h-[820px] md:w-[820px]"
+        style={{
+          background:
+            'radial-gradient(circle at center, rgba(118,33,176,0.32) 0%, rgba(182,0,168,0.14) 34%, rgba(190,76,0,0.06) 56%, transparent 72%)',
+        }}
+      />
+
       <FadeIn
         as="nav"
         delay={0}
         y={-20}
-        className="flex justify-between px-6 pt-6 md:px-10 md:pt-8"
+        className="relative z-10 flex justify-between px-6 pt-6 md:px-10 md:pt-8"
       >
         {NAV_LINKS.map((link) => (
           <a
@@ -29,7 +53,7 @@ export default function HeroSection() {
         ))}
       </FadeIn>
 
-      <div className="overflow-hidden">
+      <div className="relative z-10 overflow-hidden">
         <FadeIn
           as="h1"
           delay={0.15}
@@ -39,6 +63,14 @@ export default function HeroSection() {
           Hi, i&apos;m Priyanshu
         </FadeIn>
       </div>
+
+      {/* Synchronized main topic + left sub-skill cascade */}
+      <SkillShowcase />
+
+      {/* Mobile: auto-typing demo terminal */}
+      <FadeIn delay={0.6} y={20} className="relative z-20 mt-10 px-6 md:hidden">
+        <CodeTypingGame />
+      </FadeIn>
 
       <div className="relative z-20 mt-auto flex items-end justify-between px-6 pb-7 sm:pb-8 md:px-10 md:pb-10">
         <FadeIn delay={0.35} y={20}>
@@ -55,24 +87,13 @@ export default function HeroSection() {
         </FadeIn>
       </div>
 
+      {/* Desktop: interactive 15-second code sprint */}
       <FadeIn
         delay={0.6}
         y={30}
-        className="absolute left-1/2 top-1/2 z-10 w-[280px] -translate-x-1/2 -translate-y-1/2 sm:bottom-0 sm:top-auto sm:w-[360px] sm:translate-y-0 md:w-[440px] lg:w-[520px]"
+        className="absolute bottom-28 right-6 z-20 hidden w-[clamp(380px,40vw,540px)] md:block lg:right-12"
       >
-        <Magnet
-          padding={150}
-          strength={3}
-          activeTransition="transform 0.3s ease-out"
-          inactiveTransition="transform 0.6s ease-in-out"
-        >
-          <img
-            src={PORTRAIT}
-            alt="Priyanshu Pathak, AI/ML developer"
-            className="w-full select-none"
-            draggable={false}
-          />
-        </Magnet>
+        <CodeTypingGame interactive />
       </FadeIn>
     </section>
   );
