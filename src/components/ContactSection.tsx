@@ -11,14 +11,15 @@ const LINKS = [
   },
   {
     label: 'GitHub',
-    value: 'github.com/your-username',
-    href: 'https://github.com/your-username',
+    value: 'https://github.com/pathakpriyanshu',
+    href: 'https://github.com/pathakpriyanshu',
     Icon: Github,
   },
   {
+    // TODO(Priyanshu): replace both `value` and `href` with your LinkedIn URL.
     label: 'LinkedIn',
-    value: 'linkedin.com/in/your-profile',
-    href: 'https://linkedin.com/in/your-profile',
+    value: 'https://www.linkedin.com/in/pathakpriyanshu/',
+    href: 'https://www.linkedin.com/in/pathakpriyanshu/',
     Icon: Linkedin,
   },
 ];

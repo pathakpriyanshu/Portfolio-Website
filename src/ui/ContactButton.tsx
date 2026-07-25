@@ -4,9 +4,9 @@ type ContactButtonProps = {
 
 export default function ContactButton({ className = '' }: ContactButtonProps) {
   return (
-    <button
-      type="button"
-      className={`shrink-0 rounded-full px-8 py-3 text-xs font-medium uppercase tracking-widest text-white sm:px-10 sm:py-3.5 sm:text-sm md:px-12 md:py-4 md:text-base ${className}`}
+    <a
+      href="#contact"
+      className={`inline-block shrink-0 rounded-full px-8 py-3 text-xs font-medium uppercase tracking-widest text-white no-underline sm:px-10 sm:py-3.5 sm:text-sm md:px-12 md:py-4 md:text-base ${className}`}
       style={{
         background:
           'linear-gradient(123deg, #18011F 7%, #B600A8 37%, #7621B0 72%, #BE4C00 100%)',
@@ -17,6 +17,6 @@ export default function ContactButton({ className = '' }: ContactButtonProps) {
       }}
     >
       Contact Me
-    </button>
+    </a>
   );
 }
